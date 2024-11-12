@@ -14,41 +14,41 @@ creds = Credentials.from_service_account_file(
     'timesheet-2024-2025-6a701c48c246.json',
     scopes=["https://www.googleapis.com/auth/spreadsheets"]
 )
-# where to start making sheet
-RANGE_NAME = 'Sheet1!A1'
-
 service = build('sheets', 'v4', credentials=creds)
 
-def write_to_google_sheet(data):
+def writeToGoogleSheet(data, raw):
+    # where to start making sheet
+    RANGE_NAME = 'Sheet1!A1'
+
     try:
         # prepare data (list of rows (each individual row is a list))
         body = {
             'values': data  # data is a list of lists where each list is a row
         }
 
-        # update spreadsheet
-        result = service.spreadsheets().values().update(
-            spreadsheetId=SPREADSHEETID,
-            range=RANGE_NAME,
-            valueInputOption="RAW",
-            body=body
-        ).execute()
-        print(f"Data written to sheet: {result}")
+        if raw:
+            # update spreadsheet
+            result = service.spreadsheets().values().update(
+                spreadsheetId=SPREADSHEETID,
+                range=RANGE_NAME,
+                valueInputOption="RAW",
+                body=body
+            ).execute()
+            print(f"Data written to sheet: {result}")
+        else:
+            result = service.spreadsheets().values().update(
+                spreadsheetId=SPREADSHEETID,
+                range=RANGE_NAME,
+                valueInputOption="USER_ENTERED", #to make it a formula
+                body=body
+            ).execute()
+            print(f"Data written to sheet: {result}")
     except HttpError as err:
         print(f"Error: {err}")
 
-# TESTING DATA FOR RN
-users_data = [
-    ["Alice", "Software", "Clocked In"],
-    ["Bob", "Mechanical", "Clocked Out"],
-    ["Charlie", "Business", "Clocked In"]
-]
-
-#write_to_google_sheet(users_data)
-
 
 # CALENDAR TIMESHEET FUNCTION
-def create_new_calendar():
+def createNewCalendar():
     calendar_header = [
         ["Date", "November, 2024", "December, 2024", "January, 2025", "February, 2025", "March, 2025", 
         "April, 2025", "May, 2025", "June, 2025", "July, 2025", "August, 2025", 
@@ -83,9 +83,6 @@ def create_new_calendar():
         body=sheet_body
     ).execute()
 
-    # new sheet if want to make further updates
-    # new_sheet_id = response['replies'][0]['addSheet']['properties']['sheetId']
-
     # update new sheet with calendar
     update_body = {
         "valueInputOption": "USER_ENTERED",
@@ -101,3 +98,15 @@ def create_new_calendar():
         spreadsheetId=SPREADSHEETID,
         body=update_body
     ).execute()
+
+    # new sheet if want to make further updates
+    new_sheet_id = response['replies'][0]['addSheet']['properties']['sheetId']
+
+    addHyperLink(new_sheet_id)
+
+
+def addHyperLink(new_sheet_id):
+    link = f'=HYPERLINK("https://docs.google.com/spreadsheets/d/{SPREADSHEETID}/edit#gid={new_sheet_id}", "Work Hours Calendar")'
+    writeToGoogleSheet([[link]], False)
+
+createNewCalendar()
