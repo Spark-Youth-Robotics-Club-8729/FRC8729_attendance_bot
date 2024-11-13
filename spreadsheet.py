@@ -1,4 +1,5 @@
 import os
+import re
 from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -70,69 +71,106 @@ def writeToGoogleSheet(data, raw, name):
 
 # CALENDAR TIMESHEET FUNCTION
 def createNewCalendar(name):
-    try:
-        calendar_header = [
-            ["Date", "November, 2024", "December, 2024", "January, 2025", "February, 2025", "March, 2025", 
-            "April, 2025", "May, 2025", "June, 2025", "July, 2025", "August, 2025", 
-            "September, 2025", "October, 2025"]
-        ]
-        days_of_month = [[str(day)] + [""] * 12 for day in range(1, 32)]
-        totals_row = ["TOTAL"] + [f"=SUM({chr(66 + i)}2:{chr(66 + i)}32)" for i in range(12)]
-        yearly_total_row = ["Yearly Total", "=SUM(B33:M33)"] + [""] * 11
+    SHEET_NAME = "Overall Timesheet Summary"
+    column_range = f'{SHEET_NAME}!A2:A'  # no A1 because header
 
-        values = calendar_header + days_of_month + [totals_row, yearly_total_row]
+    result = service.spreadsheets().values().get(
+        spreadsheetId=SPREADSHEETID,
+        range=column_range,
+        valueRenderOption="UNFORMATTED_VALUE"
+    ).execute()
+    column_values = result.get('values', [])
 
-        # dictionary specifying list of instructions
-            # create new sheet
-        sheet_body = {
-            "requests": [
-                {
-                    "addSheet": {
-                        "properties": {
-                            "title": name,
-                            "gridProperties": {
-                                "rowCount": len(values) + 10,
-                                "columnCount": 23
-                            }
-                        }
-                    }
-                }
-            ]
-        }
-        # batch update to make multiple requests/operations
-        response = service.spreadsheets().batchUpdate(
-            spreadsheetId=SPREADSHEETID,
-            body=sheet_body
-        ).execute()
 
-        # update new sheet with calendar
-        update_body = {
+    # check if exists in first column (name should match)
+    calendar_exists = False
+    for i, row in enumerate(column_values):
+        if row and row[0] == name:
+            print(row, row[0])
+            cell_location = f"{SHEET_NAME}!A{i + 2}"  # +2 to account for header and 0-based index
+            print(f"Name '{name}' found in cell {cell_location}")
+            calendar_exists = True
+
+    print(calendar_exists)
+    if calendar_exists:
+        # make it update value from current date
+        body = {
             "valueInputOption": "USER_ENTERED",
             "data": [
                 {
-                    "range": f"'{name}'!A1:M35", 
-                    "majorDimension": "ROWS",
-                    "values": values
+                    "range": f"'{name}'!C10",
+                    "values": [[1]]
                 }
             ]
         }
+
         service.spreadsheets().values().batchUpdate(
             spreadsheetId=SPREADSHEETID,
-            body=update_body
+            body=body
         ).execute()
+        print("A")
 
-        # new sheet if want to make further updates
-        new_sheet_id = response['replies'][0]['addSheet']['properties']['sheetId']
+    else:
+        try:
+            calendar_header = [
+                ["Date", "November, 2024", "December, 2024", "January, 2025", "February, 2025", "March, 2025", 
+                "April, 2025", "May, 2025", "June, 2025", "July, 2025", "August, 2025", 
+                "September, 2025", "October, 2025"]
+            ]
+            days_of_month = [[str(day)] + [""] * 12 for day in range(1, 32)]
+            totals_row = ["TOTAL"] + [f"=SUM({chr(66 + i)}2:{chr(66 + i)}32)" for i in range(12)]
+            yearly_total_row = ["Yearly Total", "=SUM(B33:M33)"] + [""] * 11
 
-        addHyperLink(new_sheet_id, name)
-    except HttpError as err:
-        print(f"Error: {err}")
-        #CONTINUE ADDING
+            values = calendar_header + days_of_month + [totals_row, yearly_total_row]
 
+            # dictionary specifying list of instructions
+                # create new sheet
+            sheet_body = {
+                "requests": [
+                    {
+                        "addSheet": {
+                            "properties": {
+                                "title": name,
+                                "gridProperties": {
+                                    "rowCount": len(values) + 10,
+                                    "columnCount": 23
+                                }
+                            }
+                        }
+                    }
+                ]
+            }
+            # batch update to make multiple requests/operations
+            response = service.spreadsheets().batchUpdate(
+                spreadsheetId=SPREADSHEETID,
+                body=sheet_body
+            ).execute()
 
+            # update new sheet with calendar
+            update_body = {
+                "valueInputOption": "USER_ENTERED",
+                "data": [
+                    {
+                        "range": f"'{name}'!A1:M35", 
+                        "majorDimension": "ROWS",
+                        "values": values
+                    }
+                ]
+            }
+            service.spreadsheets().values().batchUpdate(
+                spreadsheetId=SPREADSHEETID,
+                body=update_body
+            ).execute()
+
+            # new sheet if want to make further updates
+            new_sheet_id = response['replies'][0]['addSheet']['properties']['sheetId']
+
+            addHyperLink(new_sheet_id, name)
+        except HttpError as err:
+            print(f"Error: {err}")
 
 def addHyperLink(new_sheet_id, name):
-    link = f'=HYPERLINK("https://docs.google.com/spreadsheets/d/{SPREADSHEETID}/edit#gid={new_sheet_id}", {name})'
+    link = f'=HYPERLINK("https://docs.google.com/spreadsheets/d/{SPREADSHEETID}/edit#gid={new_sheet_id}", "{name}")'
     writeToGoogleSheet([[link]], False, name)
 
-createNewCalendar("2")
+createNewCalendar("Lucas")
