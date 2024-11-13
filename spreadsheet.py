@@ -16,7 +16,7 @@ creds = Credentials.from_service_account_file(
 )
 service = build('sheets', 'v4', credentials=creds)
 
-def writeToGoogleSheet(data, raw):
+def writeToGoogleSheet(data, raw, name):
     SHEET_NAME = "Overall Timesheet Summary"
     sheet_range = f'{SHEET_NAME}!A1:Z'
     
@@ -49,6 +49,13 @@ def writeToGoogleSheet(data, raw):
             ).execute()
             print(f"Data written to sheet: {result}")
         else:
+            NEW_SHEET_NAME = data[0][0]
+            person_hours = f"='{name}'!B34"
+            data[0].append(person_hours)
+            body = {
+                'values': data
+            }
+        
             result = service.spreadsheets().values().update(
                 spreadsheetId=SPREADSHEETID,
                 range=range_name,
@@ -56,12 +63,13 @@ def writeToGoogleSheet(data, raw):
                 body=body
             ).execute()
             print(f"Data written to sheet: {result}")
+        
     except HttpError as err:
         print(f"Error: {err}")
 
 
 # CALENDAR TIMESHEET FUNCTION
-def createNewCalendar():
+def createNewCalendar(name):
     calendar_header = [
         ["Date", "November, 2024", "December, 2024", "January, 2025", "February, 2025", "March, 2025", 
         "April, 2025", "May, 2025", "June, 2025", "July, 2025", "August, 2025", 
@@ -80,7 +88,7 @@ def createNewCalendar():
             {
                 "addSheet": {
                     "properties": {
-                        "title": "Work Hours Calendar",
+                        "title": name,
                         "gridProperties": {
                             "rowCount": len(values) + 10,
                             "columnCount": 23
@@ -101,7 +109,7 @@ def createNewCalendar():
         "valueInputOption": "USER_ENTERED",
         "data": [
             {
-                "range": "Work Hours Calendar!A1:M35", 
+                "range": f"'{name}'!A1:M35", 
                 "majorDimension": "ROWS",
                 "values": values
             }
@@ -115,11 +123,11 @@ def createNewCalendar():
     # new sheet if want to make further updates
     new_sheet_id = response['replies'][0]['addSheet']['properties']['sheetId']
 
-    addHyperLink(new_sheet_id)
+    addHyperLink(new_sheet_id, name)
 
 
-def addHyperLink(new_sheet_id):
-    link = f'=HYPERLINK("https://docs.google.com/spreadsheets/d/{SPREADSHEETID}/edit#gid={new_sheet_id}", "Work Hours Calendar")'
-    writeToGoogleSheet([[link]], False)
+def addHyperLink(new_sheet_id, name):
+    link = f'=HYPERLINK("https://docs.google.com/spreadsheets/d/{SPREADSHEETID}/edit#gid={new_sheet_id}", {name})'
+    writeToGoogleSheet([[link]], False, name)
 
-createNewCalendar()
+createNewCalendar("1")
