@@ -1,5 +1,5 @@
 import os
-import re
+import datetime
 from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -70,7 +70,7 @@ def writeToGoogleSheet(data, raw, name):
 
 
 # CALENDAR TIMESHEET FUNCTION
-def createNewCalendar(name):
+def createNewCalendar(name, value):
     SHEET_NAME = "Overall Timesheet Summary"
     column_range = f'{SHEET_NAME}!A2:A'  # no A1 because header
 
@@ -94,28 +94,41 @@ def createNewCalendar(name):
     print(calendar_exists)
     if calendar_exists:
         # make it update value from current date
-        body = {
-            "valueInputOption": "USER_ENTERED",
-            "data": [
-                {
-                    "range": f"'{name}'!C10",
-                    "values": [[1]]
-                }
-            ]
-        }
+        col, row = determineCurrentDay()
+        col -= 1
+        row += 1
+        cell_range = f"'{name}'!{chr(64 + col)}{row}"
 
-        service.spreadsheets().values().batchUpdate(
+        #get the value at that specific range
+        result = service.spreadsheets().values().get(
             spreadsheetId=SPREADSHEETID,
-            body=body
+            range=cell_range
         ).execute()
-        print("A")
 
+        #set it as the current value or as 0
+        current_value = float(result.get('values', [[]])[0][0] if result.get('values') else 0)
+
+        try:
+            new_value = float(current_value) + value
+        except ValueError:
+            new_value = f"{current_value} + {value}"  # in case not number
+
+        # Update the cell with the new value
+        update_body = {
+            'values': [[new_value]]
+        }
+        service.spreadsheets().values().update(
+            spreadsheetId=SPREADSHEETID,
+            range=cell_range,
+            valueInputOption="RAW",  # raw to input directly
+            body=update_body
+        ).execute()
+
+        print(f"Updated cell {cell_range} with value: {new_value}")
     else:
         try:
             calendar_header = [
-                ["Date", "November, 2024", "December, 2024", "January, 2025", "February, 2025", "March, 2025", 
-                "April, 2025", "May, 2025", "June, 2025", "July, 2025", "August, 2025", 
-                "September, 2025", "October, 2025"]
+                ["Date", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
             ]
             days_of_month = [[str(day)] + [""] * 12 for day in range(1, 32)]
             totals_row = ["TOTAL"] + [f"=SUM({chr(66 + i)}2:{chr(66 + i)}32)" for i in range(12)]
@@ -173,4 +186,17 @@ def addHyperLink(new_sheet_id, name):
     link = f'=HYPERLINK("https://docs.google.com/spreadsheets/d/{SPREADSHEETID}/edit#gid={new_sheet_id}", "{name}")'
     writeToGoogleSheet([[link]], False, name)
 
-createNewCalendar("Lucas")
+def determineCurrentDay():
+    try:
+        today = datetime.date.today()
+        day_index = today.day 
+        month_index = today.month  
+        #print(month_index, current_day)
+        return day_index, month_index
+
+    except Exception as e:
+        print(f"Error: {e}")
+
+createNewCalendar("Lucas", 1)
+        
+#determineCurrentDay()
