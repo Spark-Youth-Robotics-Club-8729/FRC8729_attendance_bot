@@ -17,6 +17,7 @@ ID: int = os.getenv("ID")
 # specific channel id for the channel where bot messages are sent
 CHAN: int = int(os.getenv("CHAN"))
 
+
 # CLASS DEFINITIONS + INITIALIZATIONS
 # class to customize behavior of discord bot
 class Client(commands.Bot):
@@ -91,10 +92,10 @@ GUILD_ID = discord.Object(id=ID)
 database = sqlite3.connect("List.db")
 cursor = database.cursor()  # database cursor to interact with the database
 # table: team (software, b&o, mech)
-# columns: (Name, Total, ClockIn (timestamp), App (if clocked in), Request (for clocking out), Role)
+# columns: (Name, Total, ClockIn (timestamp), App (if clocked in), Request (for clocking out), Role, Paused (for avoiding accidental clockins))
 # rows: the people
 database.execute(
-    "CREATE TABLE IF NOT EXISTS team(Name STRING, Total INT, ClockIn INT, App STRING, Request INT, Role STRING)"
+    "CREATE TABLE IF NOT EXISTS team(Name STRING, Total INT, ClockIn INT, App STRING, Request INT, Role STRING, Paused BOOLEAN DEFAULT FALSE)"
 )
 
 
@@ -102,7 +103,7 @@ database.execute(
 @client.tree.command(
     name="list", description="List all users (1=sw, 2=b&o, 3=mech)", guild=GUILD_ID
 )
-async def button(interaction: discord.Interaction, team: int):
+async def listUsers(interaction: discord.Interaction, team: int):
     # function to get list of all tracked members from a specific subteam
     if team == 1:
         ans = "SOFTWARE"
@@ -219,7 +220,7 @@ async def clockIn(interaction: discord.Interaction):
 @client.tree.command(
     name="clockout", description="Clock out (stop your timer)", guild=GUILD_ID
 )  # Create a slash command
-async def button(interaction: discord.Interaction):
+async def clockOut(interaction: discord.Interaction):
     # function to clockout users
 
     # check if user is clocked in
@@ -305,7 +306,7 @@ async def button(interaction: discord.Interaction):
 @client.tree.command(
     name="leave", description="Used To Leave If Clocked In By Accident", guild=GUILD_ID
 )
-async def clockIn(interaction: discord.Interaction):
+async def leave(interaction: discord.Interaction):
     # function to leave without needing permission
     cursor.execute(
         f"UPDATE team SET App = 'FALSE' WHERE Name = ('{interaction.user.name}')"
@@ -319,7 +320,7 @@ async def clockIn(interaction: discord.Interaction):
     description="Used To force Everyone To Clockout But No Time Will Be awarded",
     guild=GUILD_ID,
 )
-async def clockIn(interaction: discord.Interaction):
+async def forceClockout(interaction: discord.Interaction):
     # function to forcefully clockout evrybody
     cursor.execute(
         f"UPDATE team SET App = 'FALSE'"
