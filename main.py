@@ -179,7 +179,7 @@ async def clockIn(interaction: discord.Interaction):
 
     # if user not clocked in
     if app == False:
-        query = "INSERT INTO team VALUES(?, ?, ?, ?, ?, ?)"
+        query = "INSERT INTO team VALUES(?, ?, ?, ?, ?, ?, 'FALSE')"
 
         if (
             discord.utils.get(interaction.guild.roles, name="software")

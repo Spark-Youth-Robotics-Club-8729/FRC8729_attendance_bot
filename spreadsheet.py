@@ -17,8 +17,21 @@ creds = Credentials.from_service_account_file(
 service = build('sheets', 'v4', credentials=creds)
 
 def writeToGoogleSheet(data, raw):
-    # where to start making sheet
-    RANGE_NAME = 'Sheet1!A1'
+    SHEET_NAME = "Overall Timesheet Summary"
+    sheet_range = f'{SHEET_NAME}!A1:Z'
+    
+    # fetch all values from sheet (checking which cells they occupy)
+    result = service.spreadsheets().values().get(
+        spreadsheetId=SPREADSHEETID,
+        range=sheet_range
+    ).execute()
+    all_values = result.get('values', [])
+
+    # find next available row
+    next_row = len(all_values) + 1
+
+    # construct range name for next available row
+    range_name = f'{SHEET_NAME}!A{next_row}'
 
     try:
         # prepare data (list of rows (each individual row is a list))
@@ -30,7 +43,7 @@ def writeToGoogleSheet(data, raw):
             # update spreadsheet
             result = service.spreadsheets().values().update(
                 spreadsheetId=SPREADSHEETID,
-                range=RANGE_NAME,
+                range=range_name,
                 valueInputOption="RAW",
                 body=body
             ).execute()
@@ -38,7 +51,7 @@ def writeToGoogleSheet(data, raw):
         else:
             result = service.spreadsheets().values().update(
                 spreadsheetId=SPREADSHEETID,
-                range=RANGE_NAME,
+                range=range_name,
                 valueInputOption="USER_ENTERED", #to make it a formula
                 body=body
             ).execute()
