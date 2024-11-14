@@ -20,7 +20,6 @@ service = build("sheets", "v4", credentials=creds)
 
 # FUNCTIONS
 
-
 def highestRowOriginalSheet(data, name):
     SHEET_NAME = "Overall Timesheet Summary"
     sheet_range = f"{SHEET_NAME}!A1:Z"
@@ -94,40 +93,7 @@ def createNewCalendar(name, value):
 
     print(calendar_exists)
     if calendar_exists:
-        # make it update value from current date
-        col, row = determineCurrentDay()
-        col -= 1
-        row += 1
-        cell_range = f"'{name}'!{chr(64 + col)}{row}"
-
-        # get the value at that specific range
-        result = (
-            service.spreadsheets()
-            .values()
-            .get(spreadsheetId=SPREADSHEETID, range=cell_range)
-            .execute()
-        )
-
-        # set it as the current value or as 0
-        current_value = float(
-            result.get("values", [[]])[0][0] if result.get("values") else 0
-        )
-
-        try:
-            new_value = float(current_value) + value
-        except ValueError:
-            new_value = f"{current_value} + {value}"  # in case not number
-
-        # Update the cell with the new value
-        update_body = {"values": [[new_value]]}
-        service.spreadsheets().values().update(
-            spreadsheetId=SPREADSHEETID,
-            range=cell_range,
-            valueInputOption="RAW",  # raw to input directly
-            body=update_body,
-        ).execute()
-
-        print(f"Updated cell {cell_range} with value: {new_value}")
+        addToCalendar(name, value)
     else:
         try:
             calendar_header = [
@@ -198,6 +164,9 @@ def createNewCalendar(name, value):
             new_sheet_id = response["replies"][0]["addSheet"]["properties"]["sheetId"]
 
             addHyperLink(new_sheet_id, name)
+
+            addToCalendar(name, value)
+
         except HttpError as err:
             print(f"Error: {err}")
 
@@ -218,7 +187,43 @@ def determineCurrentDay():
     except Exception as e:
         print(f"Error: {e}")
 
+def addToCalendar(name, value):
+    # make it update value from current date
+    col, row = determineCurrentDay()
+    col -= 1
+    row += 1
+    cell_range = f"'{name}'!{chr(64 + col)}{row}"
 
-createNewCalendar("Lucas", 1)
+    # get the value at that specific range
+    result = (
+        service.spreadsheets()
+        .values()
+        .get(spreadsheetId=SPREADSHEETID, range=cell_range)
+        .execute()
+    )
+
+    # set it as the current value or as 0
+    current_value = float(
+        result.get("values", [[]])[0][0] if result.get("values") else 0
+    )
+
+    try:
+        new_value = float(current_value) + value
+    except ValueError:
+        new_value = f"{current_value} + {value}"  # in case not number
+
+    # Update the cell with the new value
+    update_body = {"values": [[new_value]]}
+    service.spreadsheets().values().update(
+        spreadsheetId=SPREADSHEETID,
+        range=cell_range,
+        valueInputOption="RAW",  # raw to input directly
+        body=update_body,
+    ).execute()
+
+    print(f"Updated cell {cell_range} with value: {new_value}")
+
+
+# createNewCalendar("Lucas", 1)
 
 # determineCurrentDay()

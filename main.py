@@ -6,6 +6,7 @@ import time
 import sqlite3
 import datetime
 from dotenv import load_dotenv
+from spreadsheet import createNewCalendar
 
 
 # GETTING VALUES FROM .env
@@ -73,6 +74,9 @@ def convert(seconds):
     seconds %= 60
 
     return "%d:%02d:%02d" % (hour, minutes, seconds)
+
+def convertToHours(seconds):
+    return seconds/3600
 
 
 def divide_chunks(l, n):
@@ -287,6 +291,11 @@ async def clockOut(interaction: discord.Interaction):
             f"UPDATE team SET App = 'FALSE', Total = {newTime} WHERE Name = ('{interaction.user.name}')"
         )
         database.commit()
+
+        timeInHours = convertToHours(newTime)
+
+        #add to spreadsheet as well
+        createNewCalendar(interaction.user.name, timeInHours)
 
         await interaction.channel.send(
             f"Thank you {interaction.user.name}, you worked for {convert(int(request - clockInTime))}"
