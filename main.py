@@ -295,7 +295,7 @@ async def clockOut(interaction: discord.Interaction):
         timeInHours = convertToHours(newTime)
 
         #add to spreadsheet as well
-        createNewCalendar(interaction.user.name, timeInHours)
+        createNewCalendar(interaction.user.display_name, timeInHours)
 
         await interaction.channel.send(
             f"Thank you {interaction.user.name}, you worked for {convert(int(request - clockInTime))}"
