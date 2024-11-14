@@ -28,7 +28,7 @@ This is a discord bot, built by [Lucas J.](https://github.com/LucasHJin) and [Dy
      - Move that JSON file into your directory and update the following code with your JSON's file name
 ```python
 creds = Credentials.from_service_account_file(
-    "timesheet-2024-2025-6a701c48c246.json",
+    "CHANGE THIS VALUE",
     scopes=["https://www.googleapis.com/auth/spreadsheets"],
 )
 ```
