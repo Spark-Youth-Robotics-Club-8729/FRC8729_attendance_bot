@@ -330,7 +330,11 @@ async def leave(interaction: discord.Interaction):
     guild=GUILD_ID,
 )
 async def forceClockout(interaction: discord.Interaction):
-    # function to forcefully clockout evrybody
+    if discord.utils.get(interaction.user.roles, name="management") is None:
+        await interaction.response.send_message("You do not have permission to use this command.")
+        return
+
+    # function to forcefully clockout everybody
     cursor.execute(
         f"UPDATE team SET App = 'FALSE'"
     )  # makes every value in the App column false
