@@ -179,51 +179,56 @@ def addHyperLink(new_sheet_id, name):
 def determineCurrentDay():
     try:
         today = datetime.date.today()
-        day_index = today.day
-        month_index = today.month
-        # print(month_index, current_day)
+        day_index = today.day  # 1-31 for the day
+        month_index = today.month  # 1-12 for the month
+        print(today, day_index, month_index)
         return day_index, month_index
-
     except Exception as e:
         print(f"Error: {e}")
+        return None, None
+
 
 def addToCalendar(name, value):
-    # make it update value from current date
-    col, row = determineCurrentDay()
-    col -= 1
-    row += 1
-    cell_range = f"'{name}'!{chr(64 + col)}{row}"
+    # determine current day and month
+    day_index, month_index = determineCurrentDay()
+    if day_index is None or month_index is None:
+        print("Error determining current day or month")
+        return
 
-    # get the value at that specific range
-    result = (
-        service.spreadsheets()
-        .values()
-        .get(spreadsheetId=SPREADSHEETID, range=cell_range)
-        .execute()
-    )
+    # map month_index (1-12) to correct column in spreadsheet (B-M)
+    col = month_index + 1 
+    row = day_index + 1
 
-    # set it as the current value or as 0
-    current_value = float(
-        result.get("values", [[]])[0][0] if result.get("values") else 0
-    )
+    # convert column index to letter
+    col_letter = chr(64 + col)  
+
+    cell_range = f"'{name}'!{col_letter}{row}"
 
     try:
-        new_value = float(current_value) + value
-    except ValueError:
-        new_value = f"{current_value} + {value}"  # in case not number
+        result = (
+            service.spreadsheets()
+            .values()
+            .get(spreadsheetId=SPREADSHEETID, range=cell_range)
+            .execute()
+        )
+        current_value = float(
+            result.get("values", [[]])[0][0] if result.get("values") else 0
+        )
+    except (ValueError, IndexError, HttpError):
+        current_value = 0  # Default to 0 if no value or an error occurs
 
-    # Update the cell with the new value
+    new_value = current_value + value
     update_body = {"values": [[new_value]]}
     service.spreadsheets().values().update(
         spreadsheetId=SPREADSHEETID,
         range=cell_range,
-        valueInputOption="RAW",  # raw to input directly
+        valueInputOption="RAW",  # use RAW to input value directly
         body=update_body,
     ).execute()
 
     print(f"Updated cell {cell_range} with value: {new_value}")
 
 
-# createNewCalendar("Lucas", 1)
+#createNewCalendar("Lucas", 1)
 
 # determineCurrentDay()
