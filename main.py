@@ -34,8 +34,8 @@ class Client(commands.Bot):
 
 # defines ui for the bot
 class MyView(discord.ui.View):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, timeout=86400):
+        super().__init__(timeout=timeout)
         self.value = None
 
     @discord.ui.button(label="Approve", style=discord.ButtonStyle.green)
