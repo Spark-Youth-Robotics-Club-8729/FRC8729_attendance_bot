@@ -41,7 +41,7 @@ class MyView(discord.ui.View):
     @discord.ui.button(label="Approve", style=discord.ButtonStyle.green)
     async def button_approved(self, interaction, button):
         button.disabled = True  # set button.disabled to True to disable the button
-        button.label = f"Approved by {interaction.user.name}"  # change the button's label to something else
+        button.label = f"Approved by {interaction.user.display_name}"  # change the button's label to something else
         await interaction.response.edit_message(view=self)  # edit the message's view
         self.value = True
         self.stop()
@@ -49,7 +49,7 @@ class MyView(discord.ui.View):
     @discord.ui.button(label="Deny", style=discord.ButtonStyle.red)
     async def button_denied(self, interaction, button):
         button.disabled = True  # set button.disabled to True to disable the button
-        button.label = f"Denied by {interaction.user.name}"  # change the button's label to something else
+        button.label = f"Denied by {interaction.user.display_name}"  # change the button's label to something else
         await interaction.response.edit_message(view=self)  # edit the message's view
         self.value = False
         self.stop()
@@ -161,22 +161,22 @@ async def clockIn(interaction: discord.Interaction):
     try:
         # go through all rows of users
         for row in cursor.execute(
-            f"SELECT Name, App FROM team WHERE Name = ('{interaction.user.name}') "
+            f"SELECT Name, App FROM team WHERE Name = ('{interaction.user.display_name}') "
         ):
             if row != None:
                 app = True
                 if "TRUE" in str(row):  # if already clocked in
                     await interaction.response.send_message(
-                        f"You already clocked in {interaction.user.name}"
+                        f"You already clocked in {interaction.user.display_name}"
                     )
                 else:
                     cursor.execute(
-                        f"UPDATE team SET App = 'TRUE', ClockIN = {int(time.time())} WHERE Name = ('{interaction.user.name}')"
+                        f"UPDATE team SET App = 'TRUE', ClockIN = {int(time.time())} WHERE Name = ('{interaction.user.display_name}')"
                     )
                     database.commit()
 
                     await interaction.response.send_message(
-                        f"Clocked in {interaction.user.name}"
+                        f"Clocked in {interaction.user.display_name}"
                     )
     except Exception as e:
         print(f"Error syncing commands: {e}")
@@ -191,7 +191,7 @@ async def clockIn(interaction: discord.Interaction):
         ):
             cursor.execute(
                 query,
-                (interaction.user.name, 0, int(time.time()), "TRUE", 0, "SOFTWARE"),
+                (interaction.user.display_name, 0, int(time.time()), "TRUE", 0, "SOFTWARE"),
             )
 
         elif (
@@ -199,7 +199,7 @@ async def clockIn(interaction: discord.Interaction):
             in interaction.user.roles
         ):
             cursor.execute(
-                query, (interaction.user.name, 0, int(time.time()), "TRUE", 0, "B&O")
+                query, (interaction.user.display_name, 0, int(time.time()), "TRUE", 0, "B&O")
             )
 
         elif (
@@ -208,17 +208,17 @@ async def clockIn(interaction: discord.Interaction):
         ):
             cursor.execute(
                 query,
-                (interaction.user.name, 0, int(time.time()), "TRUE", 0, "MECHANICAL"),
+                (interaction.user.display_name, 0, int(time.time()), "TRUE", 0, "MECHANICAL"),
             )
 
         else:
             cursor.execute(
-                query, (interaction.user.name, 0, int(time.time()), "TRUE", 0, "IDK")
+                query, (interaction.user.display_name, 0, int(time.time()), "TRUE", 0, "IDK")
             )
 
         database.commit()
 
-        await interaction.response.send_message(f"Clocked in {interaction.user.name}")
+        await interaction.response.send_message(f"Clocked in {interaction.user.display_name}")
 
 
 @client.tree.command(
@@ -228,9 +228,9 @@ async def clockOut(interaction: discord.Interaction):
     # function to clockout users
 
     # check if user is clocked in
-    if not checkClockedIn(interaction.user.name):
+    if not checkClockedIn(interaction.user.display_name):
         await interaction.response.send_message(
-            f"You are not clocked in {interaction.user.name}"
+            f"You are not clocked in {interaction.user.display_name}"
         )
         return
 
@@ -239,13 +239,13 @@ async def clockOut(interaction: discord.Interaction):
     print(int(time.time()))
 
     # get user's clock in time from database
-    cursor.execute(f"SELECT ClockIn FROM team WHERE Name = ('{interaction.user.name}')")
+    cursor.execute(f"SELECT ClockIn FROM team WHERE Name = ('{interaction.user.display_name}')")
     clockInTime = cursor.fetchone()
 
     # error catching for no clockin time (most likely not needed)
     if clockInTime is None:
         await interaction.response.send_message(
-            f"Error: Clock-in time not found for {interaction.user.name}."
+            f"Error: Clock-in time not found for {interaction.user.display_name}."
         )
         return
 
@@ -256,7 +256,7 @@ async def clockOut(interaction: discord.Interaction):
 
     # set clockout request time, make checking if clocked in (APP) false
     cursor.execute(
-        f"UPDATE team SET Request = {int(time.time())}, App = FALSE WHERE Name = ('{interaction.user.name}')"
+        f"UPDATE team SET Request = {int(time.time())}, App = FALSE WHERE Name = ('{interaction.user.display_name}')"
     )
     # send the request in the admin channel and wait
     view = MyView()
@@ -264,7 +264,7 @@ async def clockOut(interaction: discord.Interaction):
         f"Your request for clocking out has been sent."
     )
     await Channel.send(
-        f"**{interaction.user.name}** has sent in a request to clock out. "
+        f"**{interaction.user.display_name}** has sent in a request to clock out. "
         f"They have worked for {formattedTimeWorked} so far in this session. "
         f"Do you want to approve or deny time?",
         view=view,
@@ -277,7 +277,7 @@ async def clockOut(interaction: discord.Interaction):
     # if permitted -> update the time based on the clock in and clockout times
     elif view.value == True:
         cursor.execute(
-            f"Select Total, ClockIn, Request FROM team WHERE Name = ('{interaction.user.name}')"
+            f"Select Total, ClockIn, Request FROM team WHERE Name = ('{interaction.user.display_name}')"
         )
 
         for row in cursor.fetchall():
@@ -288,7 +288,7 @@ async def clockOut(interaction: discord.Interaction):
         newTime = request - clockInTime + oldTime
 
         cursor.execute(
-            f"UPDATE team SET App = 'FALSE', Total = {newTime} WHERE Name = ('{interaction.user.name}')"
+            f"UPDATE team SET App = 'FALSE', Total = {newTime} WHERE Name = ('{interaction.user.display_name}')"
         )
         database.commit()
 
@@ -298,17 +298,17 @@ async def clockOut(interaction: discord.Interaction):
         createNewCalendar(interaction.user.display_name, timeInHours)
 
         await interaction.channel.send(
-            f"Thank you {interaction.user.name}, you worked for {convert(int(request - clockInTime))}"
+            f"Thank you {interaction.user.display_name}, you worked for {convert(int(request - clockInTime))}"
         )
     # if denied
     else:
         # only update clocked in status, send message of no approval
         cursor.execute(
-            f"UPDATE team SET App = 'FALSE' WHERE Name = ('{interaction.user.name}')"
+            f"UPDATE team SET App = 'FALSE' WHERE Name = ('{interaction.user.display_name}')"
         )
         database.commit()
         await interaction.channel.send(
-            f"{interaction.user.name} your request was not approved"
+            f"{interaction.user.display_name} your request was not approved"
         )
 
 
@@ -318,28 +318,93 @@ async def clockOut(interaction: discord.Interaction):
 async def leave(interaction: discord.Interaction):
     # function to leave without needing permission
     cursor.execute(
-        f"UPDATE team SET App = 'FALSE' WHERE Name = ('{interaction.user.name}')"
+        f"UPDATE team SET App = 'FALSE' WHERE Name = ('{interaction.user.display_name}')"
     )  # makes 1 person's App column false
     database.commit()
-    await interaction.response.send_message(f"Great you left {interaction.user.name}")
+    await interaction.response.send_message(f"Great you left {interaction.user.display_name}")
 
 
+# same as clockout except goes through column of all people with App = True
 @client.tree.command(
     name="forceclockout",
-    description="Used To force Everyone To Clockout But No Time Will Be awarded",
+    description="Used to force everyone to request clock-out with their times",
     guild=GUILD_ID,
 )
 async def forceClockout(interaction: discord.Interaction):
+    # need management role
     if discord.utils.get(interaction.user.roles, name="management") is None:
         await interaction.response.send_message("You do not have permission to use this command.")
         return
 
-    # function to forcefully clockout everybody
-    cursor.execute(
-        f"UPDATE team SET App = 'FALSE'"
-    )  # makes every value in the App column false
-    database.commit()
-    await interaction.response.send_message(f"Great you clocked out everyone")
+    # fetch all users who are currently clocked in
+    cursor.execute(f"SELECT Name FROM team WHERE App = 'TRUE'")
+    users_to_clockout = cursor.fetchall()
+
+    if not users_to_clockout:
+        await interaction.response.send_message("No users are currently clocked in.")
+        return
+
+    await interaction.response.send_message(f"Starting to process clock-out requests for {len(users_to_clockout)} users.")
+
+    for user_row in users_to_clockout:
+        user_name = user_row[0]
+
+        cursor.execute(f"SELECT ClockIn FROM team WHERE Name = ('{user_name}')")
+        clock_in_data = cursor.fetchone()
+        if clock_in_data is None:
+            continue
+
+        clock_in_time = clock_in_data[0]
+        time_worked = int(time.time()) - clock_in_time
+        formatted_time_worked = convert(time_worked)
+
+        cursor.execute(
+            f"UPDATE team SET Request = {int(time.time())} WHERE Name = ('{user_name}')"
+        )
+        database.commit()
+
+        Channel = client.get_channel(CHAN)
+        view = MyView()
+
+        await Channel.send(
+            f"**{user_name}** has been forcefully requested to clock out. "
+            f"They have worked for {formatted_time_worked} so far in this session. "
+            f"Do you want to approve or deny time?",
+            view=view,
+        )
+        await view.wait()
+
+        if view.value is None:
+            continue  
+        elif view.value:  
+            cursor.execute(
+                f"SELECT Total, ClockIn, Request FROM team WHERE Name = ('{user_name}')"
+            )
+            for row in cursor.fetchall():
+                old_time = row[0]
+                clock_in_time = row[1]
+                request_time = row[2]
+
+            new_time = request_time - clock_in_time + old_time
+            cursor.execute(
+                f"UPDATE team SET App = 'FALSE', Total = {new_time} WHERE Name = ('{user_name}')"
+            )
+            database.commit()
+
+            time_in_hours = convertToHours(new_time)
+            createNewCalendar(user_name, time_in_hours)
+
+            await Channel.send(
+                f"Approved: {user_name} worked for {convert(request_time - clock_in_time)}."
+            )
+        else: 
+            cursor.execute(
+                f"UPDATE team SET App = 'FALSE' WHERE Name = ('{user_name}')"
+            )
+            database.commit()
+            await Channel.send(f"Denied: {user_name}'s request was not approved.")
+
+    await interaction.channel.send("All clock-out requests have been processed.")
 
 
 # runs the bot
