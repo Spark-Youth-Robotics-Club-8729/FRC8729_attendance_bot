@@ -46,7 +46,7 @@ creds = Credentials.from_service_account_file(
 
 **Leave**: Allows a member to leave without needing to prompt the leads to clockout if they accidentally clocked in.
 
-**ForceClockout**: Forces everybody who is currently clocked in to clock out. Nobody gets their time tracked. This can only be used by someone with the role *management*.
+**ForceClockout**: Forces everybody who is currently clocked in to clock out. Everyone will have a request sent for their time to be clocked out. This can only be used by someone with the role *management*. It is useful as a final backup to clockout anybody that may have forgotten.
  
 ### Written Data
 **Main Page**: This is the page where every single member's hours are tracked.
