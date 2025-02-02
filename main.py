@@ -5,6 +5,9 @@ import os
 import time
 import sqlite3
 import datetime
+
+import asyncio  # Added for background task
+
 from dotenv import load_dotenv
 from spreadsheet import createNewCalendar
 
@@ -24,12 +27,43 @@ CHAN: int = int(os.getenv("CHAN"))
 class Client(commands.Bot):
     async def on_ready(self):
         print(f"Logged on as {self.user}!")
+
         try:
             guild = discord.Object(id=ID)
             synced = await self.tree.sync(guild=guild)
             print(f"Synced {len(synced)} commands to guild {guild.id}")
         except Exception as e:
             print(f"Error syncing commands: {e}")
+
+        # Start the background task
+        self.loop.create_task(self.send_hello_loop())
+
+    async def send_hello_loop(self):
+        await self.wait_until_ready()  # Ensure bot is ready before running
+        channel = self.get_channel(CHAN)  # Get the channel
+        
+        while not self.is_closed():
+            now = datetime.datetime.now()
+            next_run = now.replace(hour=1, minute=0, second=0, microsecond=0)
+
+            # If it's already past 1 AM today, schedule for tomorrow
+            if now > next_run:
+                next_run += datetime.timedelta(days=1)
+
+            # Calculate the sleep duration
+            sleep_time = (next_run - now).total_seconds()
+            print(f"Sleeping for {sleep_time} seconds until 1 AM...")
+
+            await asyncio.sleep(sleep_time)  # Wait until 1 AM
+
+            if channel:
+                cursor.execute(f"UPDATE team SET App = 'FALSE'")
+                cursor.execute(f"UPDATE team SET Total = 0")
+                database.commit()
+
+                await channel.send("All members have been clocked out!")
+
+            await asyncio.sleep(86400)  # Ensure it waits 24 hours after sending
 
 
 # defines ui for the bot
